@@ -30,10 +30,11 @@ from setuptools import setup
 
 setup(
     name         = 'trosat-base',
-    version      = '0.9b',
+    version      = '0.9b1',
     author       = 'Hartwig Deneke', 
     author_email = 'deneke@tropos.de',
     scripts      = glob.glob('bin/*.py'),
     packages     = [ 'trosat' ],
     package_dir  = { '': 'src' },
+    url          = 'https://github.com/hdeneke/trosat-base'
 )

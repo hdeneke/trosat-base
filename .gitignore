@@ -1,6 +1,12 @@
-# Python packaging dirs
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Python distribution/packaging dirs
 build
 dist
+*.egg-info/
+*.egg
 
 # Generated files 
 MANIFEST
