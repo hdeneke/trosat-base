@@ -1,0 +1,11 @@
+# Exclude EMACS files
+exclude *~ \#*\#
+
+# Include the README
+include *.md
+
+# Include the license file
+include LICENSE.txt
+
+# Examples
+recursive-include examples *.py *.ipynb

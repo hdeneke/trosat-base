@@ -1,0 +1,14 @@
+# Python packaging dirs
+build
+dist
+
+# Generated files 
+MANIFEST
+
+# Editors
+*~ 
+\#*\#
+.\#*
+.vscode/
+
+
