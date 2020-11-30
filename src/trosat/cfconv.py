@@ -1,12 +1,11 @@
 import numpy as np
 import netCDF4 as nc
-from attrdict import AttrDict
+from attrdict import AttrDict, AttrMap
 # Try to load jstylson, falling back to json
 try:
     import jstyleson as json
 except:
     import json
-
 
 def val2type(val, ts):
     '''
@@ -21,6 +20,24 @@ def val2type(val, ts):
     '''
     return getattr(np,str(np.dtype(ts)))(val)
 
+class CfDict(AttrMap):
+    '''
+    Class for storing CF-data in dictionary,
+    based on AttrMap
+    (just adding a few convenience functions)
+    '''
+    def setDim(self, name, n):
+        self.dimensions[name] = n
+        return
+
+    def setCoord(self, name, x):
+        self.dimensions[name] = x.shape[0]
+        self.variables[name].data = x
+        return
+
+    def setData(self, name, x):
+        self.variables[name].data = x
+        return
 
 def read_cfjson(fname):
     '''
@@ -37,7 +54,7 @@ def read_cfjson(fname):
         The CF conventions metadata, stored in a dictionary
     '''
     with open(fname,'r') as f:   
-        cf = json.load(f,object_pairs_hook=AttrDict)
+        cf = json.load(f, object_pairs_hook=CfDict)
         for vnam in cf.variables.keys():
             v = cf.variables[vnam]
             if 'type' in v:
@@ -56,43 +73,13 @@ class File(nc.Dataset):
         '''
         Constructor for netcdf File
         '''
-        # pop mode argument from kwargs
-        modes = kwargs.pop('modes', None)
-        props = kwargs.pop('properties', None)
+        # pop encoding argument from kwargs
+        enc = kwargs.pop('encoding', None)
         # call nc.Dataset constructor
         super().__init__(*args, **kwargs)
-        # set modes if specified
-        if modes:
-            for k,v in modes.items():
-                self.setMode(self, k, v)
-        # set default variable properties if specified
-        if props:
-            self.__dict__['properties'] = props
-        return
-
-    @staticmethod
-    def setMode(obj, mode, true_or_false):
-        '''
-        Set mode for object
-        
-        Parameters
-        ----------
-        obj : Dataset or Variable
-            object to set mode
-        mode : str
-            the mode to set
-        true_or_false : bool
-            set to on or off
-        '''
-        if mode=='fill':
-            if true_or_false==True:
-                obj.set_fill_on()
-            elif true_or_false==False:
-                obj.set_fill_off()
-        else:
-            if not hasattr(obj, 'set_'+mode):
-                raise ValueError('Trying to set invalid mode: ', k)
-            getattr(obj, 'set_'+mode)(true_or_false)
+        # set default encoding for variables if specified
+        if enc:
+            self.__dict__['encoding'] = enc
         return
 
     def createDims(self, dims):
@@ -128,12 +115,12 @@ class File(nc.Dataset):
             atts = var.attributes
             _fvalue = atts.pop('_FillValue', None)
             # get properties for variable creation
-            if hasattr(self, 'properties'):
-                kwargs = self.properties.copy()
+            if hasattr(self, 'encoding'):
+                kwargs = dict(self.encoding)
             else:
                 kwargs = {}
-            if hasattr(var, 'properties'):
-                kwargs.update(var.properties)
+            if hasattr(var, 'encoding'):
+                kwargs.update(var.encoding)
             # create variable
             self.createVariable(vnam, var.type, var.shape, fill_value=_fvalue, **kwargs)
             # add attributes to variable
@@ -141,10 +128,6 @@ class File(nc.Dataset):
             # set data if specified
             if hasattr(var, 'data'):
                 self[vnam][:] = var.data
-            # set mode
-            if hasattr(var, 'mode'):
-                for k,v in var.mode.items():
-                    self.setMode(self[vnam], k, v)
         return
 
 
@@ -176,10 +159,8 @@ def create_file( fname, cfdict=None, dims=None, atts=None, vars_=None, **kwargs)
 
         # create file
         if cfdict:
-            if 'properties' in cfdict:
-                kwargs['properties'] = cfdict.properties
-            elif 'modes' in cfdict:
-                kwargs['modes'] = cfdict.modes
+            if 'encoding' in cfdict:
+                kwargs['encoding'] = cfdict.encoding
         f = File(fname, "w", **kwargs)
         # set global attributes
         atts = cfdict.attributes if cfdict else atts
