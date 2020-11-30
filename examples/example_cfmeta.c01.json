@@ -1,0 +1,46 @@
+{
+    "attributes": {
+        "conventions"    : "CF-1.7",
+        "title"          : "Geolocation File for TROPOS CPP retrieval",
+        "institution"    : "Leibniz Institute for Tropospheric Research (TROPOS)",
+        "address"        : "Permoser Str. 15, 04318 Leipzig, Germany",
+        "author"         : "Hartwig Deneke, mailto:deneke@tropos.de"
+    },
+    "dimensions": {
+		"y"       :   720,
+		"x"       :  1200
+    },
+    "variables": {
+		"x": {
+			"shape" : ["x"],
+			"type" : "f4",
+			"attributes": {
+				"units" : "m",
+				"long_name" : "x coordinate of projection",
+				"standard_name" : "projection_x_coordinate"
+			}
+		},
+		"lat": {
+			"shape" : ["y","x"],
+			"type" : "f4",
+			"attributes": {
+				"units" : "degrees_north",
+				"standard_name" : "latitude",
+				"valid_range" : [-90.0,90.0]
+			}
+		},
+		"elev": {
+			"shape" : ["y","x"],
+			"type"  : "u2",
+			"attributes": {
+				"units" : "m",
+				"long_name" : "elevation",
+				"comment" : "Based on SRTM15_PlUS V1 15 arcsec resolution dataset",
+				"coordinates" : "lon lat",
+				"scale_factor" : 1.0,
+				"add_offset" : -1000.0
+			}
+		}
+    }
+}
+
