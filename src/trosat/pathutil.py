@@ -129,50 +129,42 @@ class PathMatcher(object):
     >>> os.unlink(m)
     '''
 
-    def __init__(self, pattern, flags=0, fullmatch=True, pathmap=None, groupindex=None, groupmap=None):
+    def __init__(self, pattern, flags=0, full=True, pathmap=None, keymap=None, valmap=None):
         '''
         '''
         self._pattern = re.compile(pattern, flags)
-        self._pathmap    = pathmap
-        self._groupindex    = groupindex
-        self._groupmap    = groupmap
-        self._matchfun  = self.fullmatch if fullmatch else self.match
+        self._pathmap = pathmap
+        self._keymap = keymap
+        self._valmap = valmap
+        self._full = full
         return
 
     def __call__(self, *args, **kwargs):
-        return self._matchfun(*args, **kwargs)
+        return self.fullmatch(*args, **kwargs) if self._full else self.match(*args, **kwargs)
 
     def match(self, p, **kwargs):
         '''
         Match the path
         '''
-        _ = str(p) if self._pathmap is None else self._pathmap(str(p))
-        m = self._pattern.match(_, **kwargs)
-        return PathMatch(m, p, self._groupindex, self._groupmap) if m else None
+        _p = str(p) if self._pathmap is None else self._pathmap(str(p))
+        m = self._pattern.match(_p, **kwargs)
+        return PathMatch(m, p, self._keymap, self._valmap) if m else None
 
     def fullmatch(self, p, **kwargs):
-        _ = str(p) if self._pathmap is None else self._pathmap(str(p))
-        m = self._pattern.fullmatch(_, **kwargs)
-        return PathMatch(m, p, self._groupindex, self._groupmap) if m else None
+        _p = str(p) if self._pathmap is None else self._pathmap(str(p))
+        m = self._pattern.fullmatch(_p, **kwargs)
+        return PathMatch(m, p, self._keymap, self._valmap) if m else None
 
 class PathMatch(object):
 
     # define fixed set of slots to limit memory usage
-    __slots__ = [ '_match', '_path', '_groupindex', '_groupmap' ]
+    __slots__ = ( '_match', '_path', '_keymap', '_valmap' )
 
-    def __init__(self, match, path, groupindex=None, groupmap=None):
+    def __init__(self, match, path, keymap=None, valmap=None):
         self._match = match
         self._path = path
-        self._groupindex  = ChainMap(groupindex.copy(), self._match.re.groupindex) if groupindex else self._match.re.groupindex
-        if groupmap:
-            self._groupmap = {}
-            for k, v in groupmap.items():
-                if type(k)==str and k in self._groupindex:
-                    self._groupmap[self._groupindex[k]] = v
-                else:
-                    self._groupmap[k] = v
-        else:
-            self._groupmap = None
+        self._keymap  = keymap if keymap else None
+        self._valmap  = valmap if valmap else None
         return
 
     def __fspath__(self):
@@ -197,21 +189,18 @@ class PathMatch(object):
         return self.group(k)
 
     def group(self, k):
-        k = self._groupindex[k] if type(k)==str and k in self._groupindex else k
-        g = self._match.group(k)
-        if self._groupmap and k in self._groupmap:
-            return self._groupmap[k](g)
-        else:
-            return g
+        _k = self._keymap[k] if (self._keymap and k in self._keymap) else k
+        g = self._match.group(_k)
+        return self._valmap[k](g) if (self._valmap and k in self._valmap) else g
 
     def groups(self):
-        return tuple(self.group(i) for i in range(self.nr_groups()+1))
+        return tuple(self.group(i) for i in range(self.num_groups()+1))
 
-    def nr_groups(self):
+    def num_groups(self):
         return self._match.re.groups
 
     def groupdict(self):
-        return { k:self.group(k) for k in self._groupindex.keys() }
+        return { k:self.group(k) for k in self._keymap.keys() }
 
             
 
