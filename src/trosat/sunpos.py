@@ -43,7 +43,7 @@ import datetime
 import numpy as np
 from numpy import sin, cos, arctan2, arcsin, arccos, deg2rad, rad2deg, pi
 
-# contant definitions
+# constant definitions
 EPOCH_JD2000_0 = np.datetime64('2000-01-01T12:00')
 ONE_DAY        = np.timedelta64(1,'D')
 
@@ -318,11 +318,11 @@ def mean_sidereal_time(time=None, lon=None, units=HR):
     return mst if units==HR else to_units(mst, HR, units)
 
 def equation_of_time(time, units=HR):
-    gmst = mean_sidereal_time(time, units=HR)
-    ra = right_ascension(time, units=HR)
-    eot = gmst-ra
-    eot = np.remainder(eot+12.0,24.0)-12.0
-    return eot if units==HR else to_units(eot, HR, units)
+    jd = to_julday(time)
+    L = np.remainder(280.460 + 0.9856474*jd,360.0)
+    ra = right_ascension(time, units=DEG)
+    eot = np.remainder(L-ra+180.0,360.0)-180.0
+    return eot if units==DEG else to_units(eot, DEG, units)
 
 def apparent_time(time, lon=None, units=HR):
     '''
