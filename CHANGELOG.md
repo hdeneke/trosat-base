@@ -5,6 +5,7 @@
 * cfconv: added support for "encode" object in CF-JSON e.g. for compression
 * cfconv: use custom class CfDict for storing CF-JSON.
 * pathutil: small fixes to PathMatcher/PathMatch
+* numpy_ext: new addition for basic numerical functions, added bitops
 
 ## Version 0.9.b1
 Initial release, including the following features/subpackages:
