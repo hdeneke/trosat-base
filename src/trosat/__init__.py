@@ -24,5 +24,5 @@
 # - Frank Werner
 # - Jonas Witthuhn
 
-__version__ = "0.9b1"
+__version__ = '0.9b1'
 __path__    = __import__('pkgutil').extend_path(__path__, __name__)
