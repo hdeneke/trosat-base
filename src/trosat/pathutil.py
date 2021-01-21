@@ -4,6 +4,8 @@ import re
 import pathlib
 from sys import maxsize as maxint
 from collections import ChainMap
+from collections.abc import Mapping as AbcMapping
+from functools import lru_cache
 
 # import cached_property
 while True:
@@ -148,59 +150,84 @@ class PathMatcher(object):
         '''
         _p = str(p) if self._pathmap is None else self._pathmap(str(p))
         m = self._pattern.match(_p, **kwargs)
-        return PathMatch(m, p, self._keymap, self._valmap) if m else None
+        return PathMatch(p, m, self._keymap, self._valmap) if m else None
 
     def fullmatch(self, p, **kwargs):
         _p = str(p) if self._pathmap is None else self._pathmap(str(p))
         m = self._pattern.fullmatch(_p, **kwargs)
-        return PathMatch(m, p, self._keymap, self._valmap) if m else None
+        return PathMatch(p, m, self._keymap, self._valmap) if m else None
 
-class PathMatch(object):
+class PathMatch(AbcMapping):
 
     # define fixed set of slots to limit memory usage
     __slots__ = ( '_match', '_path', '_keymap', '_valmap' )
 
-    def __init__(self, match, path, keymap=None, valmap=None):
-        self._match = match
+    def __init__(self, path, match, keymap=None, valmap=None):
+        # store path/match as attributes
         self._path = path
-        self._keymap  = keymap if keymap else None
-        self._valmap  = valmap if valmap else None
+        self._match = match
+        # setup keymapping
+        if keymap:
+            for k,v in keymap:
+                if type(k)!=str: 
+                    raise TypeError('Illegal key in keymap, must be string')
+                if type(v)!=int:
+                    keymap[k] = self._match.re.groupindex[k]
+            self._keymap = Chainmap(keymap, self._match.re.groupindex)
+        else:
+            self._keymap =  self._match.re.groupindex
+        self._valmap  = valmap if valmap else {}
         return
 
     def __fspath__(self):
         '''
-        Function to implement PathLike protocol, see https://docs.python.org/3/library/os.html#os.PathLike
+        Dunder method to implement PathLike protocol, see:
+        https://docs.python.org/3/library/os.html#os.PathLike
         '''
         return self._path
 
+    def __getitem__(self, k):
+        '''
+        Dunder method to implement item lookup
+        '''
+        return self.group(k)
+
     def __getattr__(self, k):
         '''
-        Access named group matches as attribute
+        Dunder method to implement attribute lookup
         '''
         try:
             return self.group(k)
         except IndexError as e:
             raise AttributeError(*e.args)
 
-    def __getitem__(self, k):
+    def __len__(self):
         '''
-        Access matches by item lookup
+        Dunder method to implement len(obj)
         '''
-        return self.group(k)
-
-    def group(self, k):
-        _k = self._keymap[k] if (self._keymap and k in self._keymap) else k
-        g = self._match.group(_k)
-        return self._valmap[k](g) if (self._valmap and k in self._valmap) else g
-
-    def groups(self):
-        return tuple(self.group(i) for i in range(self.num_groups()+1))
-
-    def num_groups(self):
         return self._match.re.groups
 
+    def __iter__(self):
+        '''
+        Dunder method for iterator
+        '''
+        for i in range(len(self)):
+            yield self._match[i+1]
+
+    def __hash__(self):
+        return id(self)
+
+    @lru_cache(maxsize=32)
+    def group(self, key):
+        k = self._keymap[key] if key in self._keymap else key
+        v = self._match.group(k)
+        return self._valmap[key](v) if key in self._valmap else v
+
+    def groups(self):
+        return tuple(self.group(i+1) for i in range(len(self_)))
+
     def groupdict(self):
-        return { k:self.group(k) for k in self._keymap.keys() }
+        return {k:self.group(k) for k in self._keymap.keys()}
 
             
 
