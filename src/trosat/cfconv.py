@@ -82,6 +82,15 @@ class File(nc.Dataset):
             self.__dict__['encoding'] = enc
         return
 
+
+    def __del__(self):
+        '''
+        Fix inheritance issue, see:
+        https://github.com/Unidata/netcdf4-python/issues/788
+        '''
+        self.close()
+
+
     def createDims(self, dims):
         '''
         create dimensions
