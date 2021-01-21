@@ -1,18 +1,18 @@
 import numpy as np
 
-def testbit(val, pos):
+def testbit(v, pos):
     m = 1<<pos
-    return (v&m)
+    return (val&m)
 
-def setbit(val, pos):
+def setbit(v, pos):
     m = 1<<pos
     return (v|m)
 
-def clearbit(val, pos):
+def clearbit(v, pos):
     m = ~(1<<pos)
     return (v&m)
 
-def togglebit(val, pos):
+def togglebit(v, pos):
     m = 1<<pos
     return (v^m)
 
