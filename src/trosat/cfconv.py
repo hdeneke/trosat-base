@@ -88,8 +88,9 @@ class File(nc.Dataset):
         Fix inheritance issue, see:
         https://github.com/Unidata/netcdf4-python/issues/788
         '''
-        self.close()
-
+        if self.isopen():
+            self.close()
+        return
 
     def createDims(self, dims):
         '''
