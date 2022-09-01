@@ -1,6 +1,8 @@
 import numpy as np
 import netCDF4 as nc
-from attrdict import AttrDict, AttrMap
+
+from addict import Dict as aDict
+
 # Try to load jstylson, falling back to json
 try:
     import jstyleson as json
@@ -20,7 +22,7 @@ def val2type(val, ts):
     '''
     return getattr(np,str(np.dtype(ts)))(val)
 
-class CfDict(AttrMap):
+class CfDict(aDict):
     '''
     Class for storing CF-data in dictionary,
     based on AttrMap
@@ -136,7 +138,7 @@ class File(nc.Dataset):
             # add attributes to variable
             self[vnam].setncatts(atts)
             # set data if specified
-            if hasattr(var, 'data'):
+            if 'data' in var:
                 self[vnam][:] = var.data
         return
 
