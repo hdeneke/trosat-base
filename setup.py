@@ -26,15 +26,18 @@
 
 import glob
 import pathlib
+import versioneer
+
 from setuptools import setup
 
 setup(
     name         = 'trosat-base',
-    version      = '0.9b1',
+    version      = versioneer.get_version(),
+    cmdclass     = versioneer.get_cmdclass(),
     author       = 'Hartwig Deneke', 
     author_email = 'deneke@tropos.de',
     scripts      = glob.glob('bin/*.py'),
-    packages     = [ 'trosat' ],
+    packages     = [ 'trosat', 'trosat.base' ],
     package_dir  = { '': 'src' },
     url          = 'https://github.com/hdeneke/trosat-base'
 )
