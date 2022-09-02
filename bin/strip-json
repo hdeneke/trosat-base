@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+
+import sys
+import os, os.path
+import argparse
+import json, jstyleson
+
+def strip_json(fin, fout, **kwargs):
+    # load JSON file ...
+    obj = jstyleson.load(fin)
+    # ... and write to output file
+    json.dump(obj, fout, **kwargs)
+    return
+
+def output_name(fn, s=".stripped"):
+    p = os.path.splitext(fn)
+    return p[0]+s+p[1]
+
+if __name__ == "__main__":
+
+    # Create argument parser
+    parser = argparse.ArgumentParser( description="Strip comments&trailing commas from non-standard JSON files." )
+
+    # Add arguments
+    parser.add_argument( "-i", "--inplace", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument( "-I", "--indent", type=int, default=None, help="Indentation level of JSON file.")
+    parser.add_argument( "flist_in", metavar="FILE", type=argparse.FileType('r'), nargs='*', \
+                         help="List of files to strip. <stdin> is used if not given."        )
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    if len(args.flist_in)==0:
+        # use sys.stdin/stdout if no files specified
+        args.flist_in  = [ sys.stdin  ]
+        args.flist_out = [ sys.stdout ]
+    else:
+        if args.inplace:
+            args.flist_out = [ open(f.name+".tmp","w") for f in args.flist_in]
+        else:
+            args.flist_out = [ open(output_name(f.name),"w") for f in args.flist_in]
+            
+    for fin,fout in zip(args.flist_in, args.flist_out):
+        # strip json from files
+        strip_json(fin, fout, indent=args.indent)
+        # close files
+        fin.close()
+        fout.close();
+        # if working inplace, overwrite content of old file with new one
+        if args.inplace:
+            os.rename(fout.name, fin.name)
+
+    
