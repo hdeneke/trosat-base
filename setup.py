@@ -40,10 +40,9 @@ setup(
     packages     = [ 'trosat', 'trosat.base' ],
     package_dir  = { '': 'src' },
     url          = 'https://github.com/hdeneke/trosat-base',
-    python_requires  = '<3.10',
+
     install_requires = ["numpy",
                         "netCDF4",
-                        "attrdict",
-                        "jstyleson",
+                        "addict",
                        ]
 )
