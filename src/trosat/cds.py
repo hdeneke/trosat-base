@@ -1,23 +1,21 @@
 '''
-Python module to access Copernicus Data Store (CDS) services.
+Python module to access the Copernicus Data Store (CDS) services.
 
 This module provides code for accessing information and data offered
 by the European Copernicus programme through the Copernicus Atmosphere
 Monitoring (CAMS) and Copernicus Climate Change Service (C3S) services.
 
-Access is implemented via the public API endpoints, refered to in the
-following as: 
+These services are refered to in the following as: 
 * The Atmosphere Data Store (ADS)
 * The Climate Data Store (CDS)
 
-The primary sources of information used for writing this module are
-the public API docs for the API endpoints (EPs)
+Access is implemented via the public API endpoints. The primary
+sources of information used for writing this module are the public API
+docs for the API endpoints (EPs)
 
-Service Link:
+References:
 * https://ads.atmosphere.copernicus.eu/#!/home
 * https://cds.climate.copernicus.eu/#!/home
-
-API Documentation:
 * https://ads.atmosphere.copernicus.eu/modules/custom/cds_apikeys/app/apidocs.html
 * https://cds.climate.copernicus.eu/modules/custom/cds_apikeys/app/apidocs.html
 '''
