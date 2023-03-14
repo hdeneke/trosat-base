@@ -1,4 +1,19 @@
-# Changelog of trosat-base Python Package
+# Changelog
+
+## Version 0.9.5
+* use versioneer for for managing version info
+* change version scheme, tag version in git
+* add strip-json tool to strip comments from non-standard JSON files
+* trosat.cds: experimental code for accessing Copernicus data store
+
+## Version 0.9.b4
+* strip notebook output from git repo
+* trosat.cfconv: switch from attrdict to addict module
+* trosat.cfconv: correctly fix close issue
+
+## Version 0.9.b3
+* trosat.cfconv: fix close issue caused by inheritance
+* trosat.numpy.ext.bitops:  bugfix
 
 ## Version 0.9.b2
 * Added example notebooks in ipynb directory for sunpos, cfconv sub-packages
