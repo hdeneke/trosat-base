@@ -1,3 +1,27 @@
+'''
+Python module to access Copernicus Data Store (CDS) services.
+
+This module provides code for accessing information and data offered
+by the European Copernicus programme through the Copernicus Atmosphere
+Monitoring (CAMS) and Copernicus Climate Change Service (C3S) services.
+
+Access is implemented via the public API endpoints, refered to in the
+following as: 
+* The Atmosphere Data Store (ADS)
+* The Climate Data Store (CDS)
+
+The primary sources of information used for writing this module are
+the public API docs for the API endpoints (EPs)
+
+Service Link:
+* https://ads.atmosphere.copernicus.eu/#!/home
+* https://cds.climate.copernicus.eu/#!/home
+
+API Documentation:
+* https://ads.atmosphere.copernicus.eu/modules/custom/cds_apikeys/app/apidocs.html
+* https://cds.climate.copernicus.eu/modules/custom/cds_apikeys/app/apidocs.html
+'''
+
 import os
 import sys
 import json
@@ -6,11 +30,40 @@ import requests
 from requests.compat import urljoin
 
 class session(requests.Session):
-    '''
+
+'''
+    Session class for sending HTTP requests to the Copernicus Data
+    Store (CDS) API endpoints.
+    
+    Parameters
+    ----------
+    url : str
+       The base URL of the API endpoint
+    key : str, default=None
+       Authentication key
+
+    Attributes
+    ----------
+    base_url : str
+       The base URL of the API endpoint
+    auth : tuple
+        Authentication tokens
+
+    Note
+    ----
+    This class inherits from request.Session and sends all requests to 
+    an URL relative to the session.base_url, inspired by:
     https://github.com/psf/requests/issues/2554#issuecomment-109341010
     '''
- 
+
+
     def __init__(self, url, *, key=None):
+        '''
+        Parameters
+        ----------
+        url : str
+            The base URL of the Copernicus Datastore 
+        '''
         # set base url as attribute
         self.base_url = url
         # call parent __init__
@@ -20,18 +73,38 @@ class session(requests.Session):
             self.auth = tuple(key.split(":",2))
         return
 
-    def request(self, method, ep, *args, **kwargs):
+
+    def request(self, method, ep, *args, raise_for_status=True, **kwargs):
         '''
-        
+        Builds, prepares and sends HTTP requests
+
+        Arguments
+        ---------
+        method : {"get", "post","put","delete"}
+            HTTP method
+        ep : str
+            the API endpoint, relative to base_url
+        args: list
+            positional arguments for calling parent class
+        kwargs: Mapping
+            keyword arguments for calling parent class
+
+        Returns
+        -------
+        resp : requests.Response
+            the response to the HTTP request
         '''
+
         url = urljoin(self.base_url, ep)
         resp = super().request(method, url, *args, **kwargs)
-        resp.raise_for_status()
+        if raise_for_status:
+            resp.raise_for_status()
         return resp
+
 
     def list_requests(self):
         ''' 
-        Get a list of CDS requests.
+        Get a list of CDS requests
 
         Parameters
         ----------
@@ -59,7 +132,7 @@ class session(requests.Session):
         ------
         TBD
         '''
-        resp = self.delete(f'tasks/{rid}')
+        resp = self.delete( f'tasks/{rid}' )
         return
 
 
@@ -163,7 +236,6 @@ class session(requests.Session):
         if hasattr(f, "close"):
             f.close()
         return
-
 
 
     
