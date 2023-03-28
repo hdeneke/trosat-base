@@ -28,8 +28,53 @@ import sys
 
 from collections.abc import Mapping
 from requests.compat import urljoin
+from functools import reduce
 from toolz import dicttoolz
-from operator import itemgetter
+from operator import itemgetter, getitem
+
+def getitem_nested(d, keys, *, sep="."):
+    '''
+    get item from nested dictionary
+    
+    Parameters
+    ----------
+    keys : tuple of str or str
+       the sequence of keys to get
+    sep : str
+       split keys usi
+    
+    Returns
+    -------
+    retval : j
+        returns the value of the nested dict
+    '''
+    keys = keys.split(sep) if isinstance(keys, str) else keys
+    return reduce(getitem, keys, d)
+
+
+def req2uuid(req):
+    '''
+    Generate a uuid from a request
+
+    Code based on:
+    https://gist.github.com/azylinski/b61116f74c609cf3b7a4b28d7da65c96
+    
+    Parameters
+    ----------
+    req : Mapping
+       the request
+    
+    Returns
+    -------
+    uuid : str
+       a string corresponding to a UUID for the object
+    '''
+    from uuid import NAMESPACE_DNS, uuid3
+    # convert req to JSON
+    jreq= json.dumps(req, sort_keys=True)
+    # return uuid3 string
+    return str(uuid3(NAMESPACE_DNS, jreq))
+
 
 def request_has_children(req):
     ''' Test if request is a parent request '''
@@ -46,15 +91,15 @@ def read_requests(fn, *, expand_user=True, expand_vars=True, \
     fpath : str or PathLike
         the file path to the JSON file
     expand_user : bool, default=True
-        tilde/user home directory expansion of target
-        key, by invoking os.path.expanduser
+        perform tilde/user home directory expansion on
+        target key by invoking os.path.expanduser
     expand_vars : bool, default=True
-        environment variable expansion of target key,
-        by invoking os.path.expanduser
+        perform environment variable expansion on target
+        key by invoking os.path.expanduser
     expand_children : bool, default=False
         expand child requests
     obj_hook : Mapping, default=dict
-        class of mapping type
+        class/constructor for mapping type
 
     Returns
     -------
@@ -82,7 +127,7 @@ def read_requests(fn, *, expand_user=True, expand_vars=True, \
     elif isinstance(reqs, Sequence):
         pass
     else:
-        raise ValueError("Read neither Sequence nor Mapping")
+        raise ValueError("read neither a Sequence nor a Mapping")
 
     # expand path
     if expand_user or expand_vars:
@@ -163,7 +208,7 @@ class session(requests.Session):
     Parameters
     ----------
     url : str
-       The base URL of the API endpoint
+       The URL of the API endpoint
     key : str, default=None
        Authentication key
 
@@ -229,12 +274,12 @@ class session(requests.Session):
 
     def list_requests(self, *, state=None, as_dict=False, http_resp=False):
         ''' 
-        Get list of CDS requests
+        Get list of submitted CDS requests
         
         Parameters
         ----------
         state : None or str
-            return only requests with this state
+            if set, only return requests with this state
         as_dict : bool
             return results as dict with request ID as keys
         http_resp : bool
@@ -255,13 +300,13 @@ class session(requests.Session):
         if state:
             retval = [r for r in retval if r["state"]==state]
 
+        # return as dictionary if as_dict is True
         if as_dict:
-            # return dictionary
             f = itemgetter("request_id")
             retval = {f(r):r for r in retval}
         
+        # return HTTP response in tuple if http_resp is True
         if http_resp:
-            # return HTTP response as well
             retval = (resp, retval)
 
         return retval
@@ -284,7 +329,7 @@ class session(requests.Session):
         return
 
 
-    def submit_request(self, name, req, json_encode=True):
+    def submit_request(self, req, name=None, /, *, userid=False, json_encode=True):
         '''
         Submit a request
 
@@ -301,8 +346,11 @@ class session(requests.Session):
         ------
         TBD
         '''
-        req = json.dumps(req) if json_encode else req
-        resp = self.post(f'resources/{name}', req)
+        
+        req  = json.dumps(req) if json_encode else req
+        #if userid:
+            
+        resp = self.post(f'resources/{resouce}', req)
         return
 
 

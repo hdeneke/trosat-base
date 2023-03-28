@@ -1,5 +1,9 @@
 # Changelog
 
+## Git Head (to become Version 0.9.6)
+* trosat.coord: new module for geographic coordinate calculations
+* trosat.cds: misc. updates and improvements
+
 ## Version 0.9.5
 * use versioneer for for managing version info
 * change version scheme, tag version in git
