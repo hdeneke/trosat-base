@@ -168,15 +168,15 @@ class session(requests.Session):
 
     Attributes
     ----------
-    base_url : str
-       The base URL of the API endpoint
+    ep_url : str
+       The URL of the API endpoint
     auth : tuple
         Authentication tokens
 
     Note
     ----
     This class inherits from request.Session and sends all requests to 
-    an URL relative to the session.base_url, inspired by:
+    an URL relative to the session.ep_url, inspired by:
     https://github.com/psf/requests/issues/2554#issuecomment-109341010
     '''
 
@@ -189,7 +189,7 @@ class session(requests.Session):
             The base URL of the Copernicus Datastore 
         '''
         # set base url as attribute
-        self.base_url = url
+        self.ep_url = url
         # call parent __init__
         super().__init__()
         # add authentication keys
@@ -207,7 +207,7 @@ class session(requests.Session):
         method : {"get", "post","put","delete"}
             HTTP method
         ep : str
-            the API endpoint, relative to base_url
+            the API endpoint, relative to ep_url
         args: list
             positional arguments for calling parent class
         kwargs: Mapping
@@ -219,7 +219,7 @@ class session(requests.Session):
             the response to the HTTP request
         '''
 
-        url = urljoin(self.base_url, ep)
+        url = urljoin(self.ep_url, ep)
         resp = super().request(method, url, *args, **kwargs)
         if raise_for_status:
             resp.raise_for_status()
