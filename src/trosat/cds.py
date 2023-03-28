@@ -26,11 +26,12 @@ import requests
 import string
 import sys
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from requests.compat import urljoin
 from functools import reduce
 from toolz import dicttoolz
 from operator import itemgetter, getitem
+
 
 def getitem_nested(d, keys, *, sep="."):
     '''
@@ -49,7 +50,7 @@ def getitem_nested(d, keys, *, sep="."):
         returns the value of the nested dict
     '''
     keys = keys.split(sep) if isinstance(keys, str) else keys
-    return reduce(getitem, keys, d)
+    return reduce(lambda d,k: d.get(k, None) if d else None, keys, d)
 
 
 def req2uuid(req):
@@ -414,9 +415,11 @@ class session(requests.Session):
 
         # open destination file for writing
         if ofile is None:
-            req_details = self.request_details(rid)
-            req_json = req_details["original_request"]["specific_json"]
-            ofile = req_json.get("target", None)
+            ofile = getitem_nested(
+                self.request_details(rid), 
+                "original_request/specific_json/target",
+                sep="/"
+            )
             if ofile is None: raise ValueError("neither ofile set nor target in request")
 
         f = ofile if hasattr(ofile, "write") else open(ofile, "wb")

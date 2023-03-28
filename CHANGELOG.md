@@ -5,7 +5,7 @@
 * trosat.cds: misc. updates and improvements
 
 ## Version 0.9.5
-* use versioneer for for managing version info
+* use versioneer for managing version numbers
 * change version scheme, tag version in git
 * add strip-json tool to strip comments from non-standard JSON files
 * trosat.cds: experimental code for accessing Copernicus data store
