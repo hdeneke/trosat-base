@@ -29,6 +29,7 @@ import sys
 from collections.abc import Mapping
 from requests.compat import urljoin
 from toolz import dicttoolz
+from operator import itemgetter
 
 def request_has_children(req):
     ''' Test if request is a parent request '''
@@ -226,21 +227,44 @@ class session(requests.Session):
         return resp
 
 
-    def list_requests(self):
+    def list_requests(self, *, state=None, as_dict=False, http_resp=False):
         ''' 
-        Get a list of CDS requests
-
+        Get list of CDS requests
+        
         Parameters
         ----------
-        as_dict : Bool
-            Return results as dict, with request IDs as keys
+        state : None or str
+            return only requests with this state
+        as_dict : bool
+            return results as dict with request ID as keys
+        http_resp : bool
+            return http response of request as first tuple member 
         
         Returns
         -------
-           A list or dict of user's requests
+            list or dict of requests, or tuple with HTTP response
         '''
+        
+        # get task list
         resp = self.get('tasks')
-        return json.loads(resp.text)
+
+        # parse json-formatted request list
+        retval = json.loads(resp.text)
+
+        # filter by state if state argument is given
+        if state:
+            retval = [r for r in retval if r["state"]==state]
+
+        if as_dict:
+            # return dictionary
+            f = itemgetter("request_id")
+            retval = {f(r):r for r in retval}
+        
+        if http_resp:
+            # return HTTP response as well
+            retval = (resp, retval)
+
+        return retval
 
 
     def delete_request(self, rid):
