@@ -28,11 +28,35 @@ while True:
 
 _regex_var =  re.compile('\$(\{)?(\w+)(?(1)\})',re.ASCII)
 
+
 def expandvars(s, env=os.environ):
     '''
     Expand environment variables in string.
     '''
     return _regex_var.sub(lambda m: env[m[2]] if m[2] in env else m[0], s)
+
+
+def expandpath(p, *, user=True, vars=True, env=None):
+    '''
+    Perform path expansion
+
+    Parameters
+    ----------
+    user: bool
+        perform user-name related path expansion
+    vars: bool
+        perform environment variable path expansion
+    
+    Returns
+    -------
+    path : str
+        the expanded path
+    '''
+
+    p = os.path.expanduser(p) if user else p
+    p = os.path.expandvars(p) if vars else p
+    return p
+
 
 
 class PathFormatter(string.Formatter):
@@ -228,7 +252,3 @@ class PathMatch(AbcMapping):
 
     def groupdict(self):
         return {k:self.group(k) for k in self._keymap.keys()}
-
-            
-
-
