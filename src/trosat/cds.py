@@ -33,7 +33,7 @@ from toolz import dicttoolz
 from operator import itemgetter, getitem
 
 
-def getitem_nested(d, keys, *, sep="."):
+def get_nested(d, keys, *, sep="."):
     '''
     get item from nested dictionary
     
@@ -330,16 +330,21 @@ class session(requests.Session):
         return
 
 
-    def submit_request(self, req, name=None, /, *, userid=False, json_encode=True):
+    def submit_request(self, req, resource=None, /, *, userid=False,
+                       return_uuid=False, json_encode=True):
         '''
         Submit a request
 
         Parameters
         ----------
-        name : str
-            the dataset name
         req  : str or dict
             the request
+        resource : str
+            the resource/dataset name
+        userid : bool, default=False
+            specify userid on submission if set
+        return_uuid : bool, default=False
+            return uuid of request
         json_encode : bool, default=True
             boolean flag for encod
 
@@ -350,9 +355,13 @@ class session(requests.Session):
         
         req  = json.dumps(req) if json_encode else req
         #if userid:
-            
+        if resource is None:
+            # infer resource name 
+            if not json_encode:
+                raise ValueError("submit: resource not given and json str")
+            resource = req["dataset"].split(":")[-1]
         resp = self.post(f'resources/{resouce}', req)
-        return
+        return resp if return_uuid else None
 
 
     def request_info(self, rid):
@@ -373,9 +382,9 @@ class session(requests.Session):
         return json.loads(resp.text)
 
 
-    def request_details(self, rid):
+    def request_provenance(self, rid):
         '''
-        Get request details.
+        Get request provenance.
 
         Parameters
         ----------
@@ -415,26 +424,38 @@ class session(requests.Session):
 
         # open destination file for writing
         if ofile is None:
-            ofile = getitem_nested(
-                self.request_details(rid), 
-                "original_request/specific_json/target",
-                sep="/"
+            ofile = get_nested(
+                self.request_provenance(rid), 
+                "original_request.specific_json.target",
             )
             if ofile is None: raise ValueError("neither ofile set nor target in request")
 
-        f = ofile if hasattr(ofile, "write") else open(ofile, "wb")
+        # open file obj for writing
+        fobj = ofile if hasattr(ofile, "write") else open(ofile, "wb")
 
-        # get download using stream mode in chunks
-        resp = super().get(dl_url, stream=True)
-        resp.raise_for_status()
-        
-        for chunk in resp.iter_content(chunk_size=chunk_size):
-            f.write( chunk )
+        #  download URL 
+        self.download_url(dl_url, fobj, chunk_size=chunk_size)
 
         # cleanup
-        if hasattr(f, "close"):
-            f.close()
+        if hasattr(fobj, "close"):
+            fobj.close()
         return
 
 
-    
+def download_url(self, url, ostream, *, http_resp=False, chunk_size=8192):
+    '''
+    Download URL of completed request to a file object 
+        
+    Parameters
+    ----------
+    url : str
+        the URL of the download
+    ostream : file object
+        the output file object for the download
+    '''
+
+    resp = super().get(url, stream=True)
+    resp.raise_for_status()
+    for chunk in resp.iter_content(chunk_size=chunk_size):
+        ostream.write(chunk)
+    return resp if http_resp else None
