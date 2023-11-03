@@ -1,6 +1,7 @@
 # Changelog
 
 ## Git Head (to become Version 0.9.6)
+* trosat.numpy_ext: add minmax function
 * trosat.coord: new module for geographic coordinate calculations
 * trosat.cds: misc. updates and improvements
 

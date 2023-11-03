@@ -1,5 +1,11 @@
 import numpy as np
 
+def minmax(x, skipna=True):
+    if skipna:
+        return (np.nanmin(x.values), np.nanmax(x.values))
+    else:
+        return (np.min(x.values), np.max(x.values))
+
 def testbit(v, pos):
     m = 1<<pos
     return (val&m)
