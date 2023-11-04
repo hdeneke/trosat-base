@@ -2,9 +2,9 @@ import numpy as np
 
 def minmax(x, skipna=True):
     if skipna:
-        return (np.nanmin(x.values), np.nanmax(x.values))
+        return (np.nanmin(x), np.nanmax(x))
     else:
-        return (np.min(x.values), np.max(x.values))
+        return (np.min(x), np.max(x))
 
 def testbit(v, pos):
     m = 1<<pos
