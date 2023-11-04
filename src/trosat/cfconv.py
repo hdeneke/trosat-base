@@ -1,7 +1,13 @@
 import numpy as np
+import pandas as pd
+
 import netCDF4 as nc
 
 from addict import Dict as aDict
+from . import numpy_ext as npx
+
+lat_units = "degree_north"
+lon_units = "degree_east"
 
 # Try to load jstylson, falling back to json
 try:
@@ -184,6 +190,56 @@ def create_file( fname, cfdict=None, dims=None, atts=None, vars_=None, **kwargs)
         vars_ = cfdict.variables if cfdict else vars_
         if vars_: f.createVars(vars_)
         return f
+
+def get_coverage(ds, *, timevar="time", skipna=True):
+    '''
+    get ACCD coverage attributes for xr.Dataset
+    
+    Parameters
+    ----------
+    ds : xr.Dataset
+        the dataset to use as basis
+    timevar : str, default="time"
+        the name of the time variable, or None, if time coverage should be skipped
+    return_json : bool, optional
+        return results as a json string
+    kwargs
+        further keyword arguments passed to json.dumps
+    
+    Returns
+    -------
+    coverage : dict
+        dict with ACDD coverage attributes
+    '''
+
+    # calc. geospatial coverage
+    lat_min, lat_max = npx.minmax(ds["lat"], skipna=skipna)
+    lon_min, lon_max = npx.minmax(ds["lon"], skipna=skipna)
+    cov = {
+        "geospatial_lat_min": lat_min,
+        "geospatial_lat_max": lat_max,
+        "geospatial_lat_units": lat_units,
+        "geospatial_lon_min": lon_min,
+        "geospatial_lon_max": lon_max,
+        "geospatial_lon_units": lon_units,
+    }
+    
+    #
+    if timevar is not None:
+        tarr = ds[timevar]
+        tstart = pd.to_datetime(tarr.values.min())
+        tend   = pd.to_datetime(tarr.values.max())
+        tres   = pd.to_timedelta(np.diff(tarr.values).mean())
+        cov.update({
+            "time_coverage_start": tstart.isoformat(),
+            "time_coverage_end": tend.isoformat(),
+            "time_coverage_duration": (tend-tstart).isoformat(),
+            "time_coverage_resolution": tres.isoformat()
+        })
+    return cov    
+
+
+
     
 
     
