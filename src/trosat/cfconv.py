@@ -15,6 +15,7 @@ try:
 except:
     import json
 
+
 def val2type(val, ts):
     '''
     Convert scalar value to numpy type based on ts
@@ -26,7 +27,8 @@ def val2type(val, ts):
     ts : string
         A string denoting type
     '''
-    return getattr(np,str(np.dtype(ts)))(val)
+    return np.dtype(ts).type(val)
+
 
 class CfDict(aDict):
     '''
