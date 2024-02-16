@@ -49,6 +49,24 @@ class CfDict(aDict):
         self.variables[name].data = x
         return
 
+
+def get_cfattrs_astype(attrs, dtype):
+    '''
+    Convert type-specific CF variable attributes to given dtype
+    '''
+    def _mapfunc(item, dtype):
+        ''' local function to perform dtype mapping on dict items'''
+        key, val = item
+        if key in {"valid_min", "valid_max", "_FillValue"}:
+            val = val2type(val)
+        elif key in {"valid_range", "flag_masks", "flag_values"}:
+            val = [val2type(val) for v in val]
+        return (key, val)
+    
+    f = lambda item: _mapfunc(item, dtype)
+    return dicttoolz.itemmap(f, attrs)
+
+
 def read_cfjson(fname):
     '''
     Read a CF-JSON like JSON file, see https://cf-json.org for info. 
@@ -63,17 +81,11 @@ def read_cfjson(fname):
     cfdict : dict-like
         The CF conventions metadata, stored in a dictionary
     '''
-    with open(fname,'r') as f:   
+    with open(fname, "r") as f:   
         cf = json.load(f, object_pairs_hook=CfDict)
-        for vnam in cf.variables.keys():
-            v = cf.variables[vnam]
-            if 'type' in v:
-                if '_FillValue' in v.attributes:
-                    val = val2type(v.attributes['_FillValue'], v.type)
-                    v.attributes['_FillValue'] = val
-                if 'flag_masks' in v.attributes:
-                    mlist = [val2type(m,v.type) for m in v.attributes['flag_masks']]
-                    v.attributes['flag_masks'] = mlist
+        for v in cf.variables.values():
+            if "type" in v: 
+                v.attributes = get_cfattrs_astype(v.attributes, v.type)
     return cf
 
 
@@ -245,3 +257,4 @@ def get_coverage(ds, *, timevar="time", skipna=True):
     
 
     
+
