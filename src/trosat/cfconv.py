@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 import netCDF4 as nc
+from toolz import dicttoolz
 
 from addict import Dict as aDict
 from . import numpy_ext as npx
@@ -54,13 +55,14 @@ def get_cfattrs_astype(attrs, dtype):
     '''
     Convert type-specific CF variable attributes to given dtype
     '''
+
     def _mapfunc(item, dtype):
         ''' local function to perform dtype mapping on dict items'''
         key, val = item
         if key in {"valid_min", "valid_max", "_FillValue"}:
-            val = val2type(val)
+            val = val2type(val, dtype)
         elif key in {"valid_range", "flag_masks", "flag_values"}:
-            val = [val2type(val) for v in val]
+            val = [val2type(v, dtype) for v in val]
         return (key, val)
     
     f = lambda item: _mapfunc(item, dtype)
