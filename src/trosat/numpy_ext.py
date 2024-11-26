@@ -53,4 +53,12 @@ def hist_nd(index_tuple, shape, dtype='int16'):
     i_un, cnt = np.unique(ii,return_counts=True)
     h[i_un] = cnt
     return h.reshape(shape)
-    
+
+def sincos(x, **kwargs):
+    if 'out' in kwargs:
+        out = kwargs.pop("out")
+        out[0][:] = np.sin(x, **kwargs)
+        out[1][:] = np.cos(x, **kwargs)
+        return
+    else:
+        return np.sin(x, **kwargs), np.cos(x, **kwargs)
