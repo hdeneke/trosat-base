@@ -35,6 +35,12 @@ def popcount64(v):
 def countbits(v, maxbits=32):
     return popcount32(v) if maxbits<=32 else popcount64(v)
 
-
-        
+def get_bbox_slices(mask):
+    '''
+    Get slices corresponding to bounding box for a 2D boolean mask
+    '''
+    iy,ix = np.where(mask)
+    sy = slice(np.min(iy),np.max(iy)+1)
+    sx = slice(np.min(ix),np.max(ix)+1)
+    return sy,sx
     
