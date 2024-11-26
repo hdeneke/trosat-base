@@ -43,4 +43,14 @@ def get_bbox_slices(mask):
     sy = slice(np.min(iy),np.max(iy)+1)
     sx = slice(np.min(ix),np.max(ix)+1)
     return sy,sx
+
+def hist_nd(index_tuple, shape, dtype='int16'):
+    '''
+    Calculate N-dimensional histogram
+    '''
+    h = np.zeros(np.prod(shape),dtype=dtype)
+    ii = np.ravel_multi_index(index_tuple, shape)
+    i_un, cnt = np.unique(ii,return_counts=True)
+    h[i_un] = cnt
+    return h.reshape(shape)
     
