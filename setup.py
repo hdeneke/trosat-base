@@ -39,5 +39,10 @@ setup(
     scripts      = glob.glob('bin/*'),
     packages     = [ 'trosat', 'trosat.base' ],
     package_dir  = { '': 'src' },
-    url          = 'https://github.com/hdeneke/trosat-base'
+    url          = 'https://github.com/hdeneke/trosat-base',
+
+    install_requires = ["numpy",
+                        "netCDF4",
+                        "addict",
+                       ]
 )
