@@ -26,55 +26,14 @@ import requests
 import string
 import sys
 
-from collections.abc import Mapping, Sequence
-from requests.compat import urljoin
-from functools import reduce
-from toolz import dicttoolz
+from collections import deque
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from operator import itemgetter, getitem
 
-
-def get_nested(d, keys, *, sep="."):
-    '''
-    get item from nested dictionary
-    
-    Parameters
-    ----------
-    keys : tuple of str or str
-       the sequence of keys to get
-    sep : str
-       split keys usi
-    
-    Returns
-    -------
-    retval : j
-        returns the value of the nested dict
-    '''
-    keys = keys.split(sep) if isinstance(keys, str) else keys
-    return reduce(lambda d,k: d.get(k, None) if d else None, keys, d)
-
-
-def req2uuid(req):
-    '''
-    Generate a uuid from a request
-
-    Code based on:
-    https://gist.github.com/azylinski/b61116f74c609cf3b7a4b28d7da65c96
-    
-    Parameters
-    ----------
-    req : Mapping
-       the request
-    
-    Returns
-    -------
-    uuid : str
-       a string corresponding to a UUID for the object
-    '''
-    from uuid import NAMESPACE_DNS, uuid3
-    # convert req to JSON
-    jreq= json.dumps(req, sort_keys=True)
-    # return uuid3 string
-    return str(uuid3(NAMESPACE_DNS, jreq))
+from requests.compat import urljoin, urlparse
+from urllib.parse import parse_qsl
+from toolz import dicttoolz
+from .util import get_jspath_node
 
 
 def request_has_children(req):
@@ -201,10 +160,10 @@ def expand_requests(base_reqs, farg_iter, *, fmt_keys=None):
             yield _fmt_request(req.copy(), farg, _keys)
 
 
-class session(requests.Session):
+class ApiSession(requests.Session):
     '''
-    Session class for sending HTTP requests to the Copernicus Data
-    Store (CDS) API endpoints.
+    Session class for sending HTTP requests to a Copernicus Data Store (CDS)
+    API endpoint.
     
     Parameters
     ----------
@@ -215,7 +174,7 @@ class session(requests.Session):
 
     Attributes
     ----------
-    ep_url : str
+    url : str
        The URL of the API endpoint
     auth : tuple
         Authentication tokens
@@ -223,12 +182,15 @@ class session(requests.Session):
     Note
     ----
     This class inherits from request.Session and sends all requests to 
-    an URL relative to the session.ep_url, inspired by:
+    an URL relative to session.base_url, which is particularly useful
+    for talking to a WebAPI.
+
+    Code inspired by:
     https://github.com/psf/requests/issues/2554#issuecomment-109341010
     '''
 
 
-    def __init__(self, url, *, key=None):
+    def __init__(self, base_url, *, headers=None, key=None):
         '''
         Parameters
         ----------
@@ -236,210 +198,170 @@ class session(requests.Session):
             The base URL of the Copernicus Datastore 
         '''
         # set base url as attribute
-        self.ep_url = url
+        self.base_url = base_url
         # call parent __init__
         super().__init__()
         # add authentication keys
         if key:
             self.auth = tuple(key.split(":",2))
+        if headers:
+            self.headers.update(headers)
         return
 
 
-    def request(self, method, ep, *args, raise_for_status=True, **kwargs):
+    def request(self, method, ep_url, *args, raise_for_status=True, **kwargs):
         '''
-        Builds, prepares and sends HTTP requests
+        Builds, prepares and sends the HTTP requests
 
         Arguments
         ---------
         method : {"get", "post","put","delete"}
             HTTP method
-        ep : str
-            the API endpoint, relative to ep_url
+        ep_url : str
+            the URL of the service endpoint, relative to self.base_url
         args: list
-            positional arguments for calling parent class
+            positional arguments for calling the parent class
+        raise_for_status: bool, default=True
+            raise 
         kwargs: Mapping
-            keyword arguments for calling parent class
+            keyword arguments for calling the parent class
 
         Returns
         -------
         resp : requests.Response
-            the response to the HTTP request
+            the response of the HTTP request
         '''
 
-        url = urljoin(self.ep_url, ep)
+        url = urljoin(self.base_url, ep_url)
         resp = super().request(method, url, *args, **kwargs)
-        if raise_for_status:
-            resp.raise_for_status()
+        if raise_for_status: resp.raise_for_status()
         return resp
 
 
-    def list_requests(self, *, state=None, as_dict=False, http_resp=False):
-        ''' 
-        Get list of submitted CDS requests
-        
-        Parameters
-        ----------
-        state : None or str
-            if set, only return requests with this state
-        as_dict : bool
-            return results as dict with request ID as keys
-        http_resp : bool
-            return http response of request as first tuple member 
-        
-        Returns
-        -------
-            list or dict of requests, or tuple with HTTP response
-        '''
-        
-        # get task list
-        resp = self.get('tasks')
-
-        # parse json-formatted request list
-        retval = json.loads(resp.text)
-
-        # filter by state if state argument is given
-        if state:
-            retval = [r for r in retval if r["state"]==state]
-
-        # return as dictionary if as_dict is True
-        if as_dict:
-            f = itemgetter("request_id")
-            retval = {f(r):r for r in retval}
-        
-        # return HTTP response in tuple if http_resp is True
-        if http_resp:
-            retval = (resp, retval)
-
-        return retval
-
-
-    def delete_request(self, rid):
-        '''
-        Delete a request.
-
-        Parameters
-        ----------
-        rid : str
-            The request ID.
-
-        Raises
-        ------
-        TBD
-        '''
-        resp = self.delete( f'tasks/{rid}' )
+class EpDict(Mapping):
+    '''
+    Dict-like object representing a REST API endpoint
+    '''
+    def __init__(self, api, endpoint):
+        self.api = api
+        self.session = api.session
+        self.endpoint = endpoint
         return
 
+    def __getitem__(self, key):
+        try:
+            return self.session.get(
+                self.endpoint.format(key=key)
+            ).json()
+        except HTTPError as e:
+            raise KeyError(f"no job id {key}" ) from e
 
-    def submit_request(self, req, resource=None, /, *, userid=False,
-                       return_uuid=False, json_encode=True):
-        '''
-        Submit a request
+    def __len__(self):
+        return self.api.__len__()
 
-        Parameters
-        ----------
-        req  : str or dict
-            the request
-        resource : str
-            the resource/dataset name
-        userid : bool, default=False
-            specify userid on submission if set
-        return_uuid : bool, default=False
-            return uuid of request
-        json_encode : bool, default=True
-            boolean flag for encod
-
-        Raises
-        ------
-        TBD
-        '''
-        
-        req  = json.dumps(req) if json_encode else req
-        #if userid:
-        if resource is None:
-            # infer resource name 
-            if not json_encode:
-                raise ValueError("submit: resource not given and json str")
-            resource = req["dataset"].split(":")[-1]
-        resp = self.post(f'resources/{resouce}', req)
-        return resp if return_uuid else None
+    def __iter__(self):
+        return self.api.__iter__()
 
 
-    def request_info(self, rid):
-        '''
-        Get request info.
+class _JobsIter(Iterator):
 
-        Parameters
-        ----------
-        rid : str
-            The request ID.
-
-        Returns
-        -------
-        info : dict
-            The decoded json response of the "tasks/{rid}" endpoint.
-        '''
-        resp = self.get( f'tasks/{rid}' )
-        return json.loads(resp.text)
-
-
-    def request_provenance(self, rid):
-        '''
-        Get request provenance.
-
-        Parameters
-        ----------
-        rid : str
-            The request ID.
-
-        Returns
-        -------
-        info : dict
-            The decoded json response of the "tasks/{id}/provenance" endpoint.
-        '''
-        resp = self.get(f'tasks/{rid}/provenance')
-        return json.loads(resp.text)
-
-
-    def download_request(self, rid, ofile=None, *, chunk_size=8192):
-        '''
-        Download a completed request from the CDS.
-
-        Parameters
-        ----------
-        rid : str
-            The request ID.
-        ofile: str, pathlike or filelike, default=None
-            The target file to save the request to.
-
-        Returns
-        -------
-        None
-        '''
-        
-        # get request info
-        param = self.request_info(rid)
-
-        # get download URL and content length
-        dl_url = param["location"]
-
-        # open destination file for writing
-        if ofile is None:
-            ofile = get_nested(
-                self.request_provenance(rid), 
-                "original_request.specific_json.target",
-            )
-            if ofile is None: raise ValueError("neither ofile set nor target in request")
-
-        # open file obj for writing
-        fobj = ofile if hasattr(ofile, "write") else open(ofile, "wb")
-
-        #  download URL 
-        self.download_url(dl_url, fobj, chunk_size=chunk_size)
-
-        # cleanup
-        if hasattr(fobj, "close"):
-            fobj.close()
+    def __init__(self, session, limit=10, **kwargs):
+        self.session = session
+        self._jobs = deque()
+        self._qdict = {**kwargs, "limit":limit}
+        self._next  = True
         return
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return self._jobs.popleft()
+        except IndexError:
+            # should we try to get more jobs from endpoint?
+            if self._next:
+                # get next jobs page
+                jj = self.session.get('jobs', params=self._qdict).json()
+                # get URL/query dict for next page
+                href_next = get_jspath_node(jj, '$.links[?rel=="next"].href')
+                if href_next:
+                    self._qdict = self.get_query_dict(href_next)
+                else:
+                    self._next = False
+                jlist = jj["jobs"]
+                if len(jj["jobs"])>0:
+                    self._jobs.extend(jj["jobs"])
+                    return self._jobs.popleft()
+            raise StopIteration
+
+    @staticmethod
+    def get_query_dict(url):
+        qstr = urlparse(url).query
+        return dict(parse_qsl(qstr)) if qstr else None
+
+class JobsApi(Mapping):
+
+    def __init__(self, session):
+        self.session = session
+        self.status  = EpDict(self, 'jobs/{key}')
+        self.results = EpDict(self, 'jobs/{key}/results')
+        self.receipt = EpDict(self, 'jobs/{key}/receipt')
+        return
+
+    def __len__(self):
+        jj = self.session.get('jobs', params={"limit":1}).json()
+        return get_jspath_node(jj, "$.metadata.totalCount", type=int)
+
+    def __getitem__(self, key):
+        return self.status[key]
+
+    def __delitem__(self, key):
+        return self.delete(key)
+
+    def __iter__(self):
+        return (j["jobID"] for j in  _JobsIter(self.session, limit=10))
+
+    def __call__(self, limit=10, **qparams):
+        return _JobsIter(self.session, limit=limit, **qparams)
+        
+    def submit(self, req):
+        '''
+        submit a data request job
+
+        Parameters
+        ----------
+        req : dict-like
+            the request in dictionary format
+
+        Returns
+        -------
+        response
+        '''
+        # get dataset
+        dataset = req["dataset"]
+        resp = self.session.post(
+            f"processes/{dataset}/execution",
+            json={
+                "inputs": req
+            }
+        )
+        return resp.json()
+
+    def delete(self, key):
+        '''
+        delete a data request job
+
+        Parameters
+        ----------
+        jid : int
+            the ID of the data request job
+
+        Returns
+        -------
+        response
+        '''
+        return self.session.delete(f'jobs/{key}').json()
 
 
 def download_url(self, url, ostream, *, http_resp=False, chunk_size=8192):
