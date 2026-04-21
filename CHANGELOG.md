@@ -1,10 +1,11 @@
 # Changelog
 
-## Git Head (to become Version 0.9.6)
+## Version 0.9.6
+* Versioning: switch from Versioneer to setuptools_scm
+* trosat.cds: major updates to support new ECMWF REST API
 * trosat.cfconv: add get_coverage function
 * trosat.numpy_ext: add minmax function
 * trosat.coord: new module for geographic coordinate calculations
-* trosat.cds: misc. updates and improvements
 
 ## Version 0.9.5
 * use versioneer for managing version numbers
