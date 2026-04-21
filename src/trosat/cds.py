@@ -26,10 +26,14 @@ import requests
 import string
 import sys
 
-from collections.abc import Mapping, Sequence
-from requests.compat import urljoin
-from toolz import dicttoolz
+from collections import deque
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from operator import itemgetter, getitem
+
+from requests.compat import urljoin, urlparse
+from urllib.parse import parse_qsl
+from toolz import dicttoolz
+from .util import get_jspath_node
 
 
 def request_has_children(req):
@@ -232,6 +236,132 @@ class ApiSession(requests.Session):
         resp = super().request(method, url, *args, **kwargs)
         if raise_for_status: resp.raise_for_status()
         return resp
+
+
+class EpDict(Mapping):
+    '''
+    Dict-like object representing a REST API endpoint
+    '''
+    def __init__(self, api, endpoint):
+        self.api = api
+        self.session = api.session
+        self.endpoint = endpoint
+        return
+
+    def __getitem__(self, key):
+        try:
+            return self.session.get(
+                self.endpoint.format(key=key)
+            ).json()
+        except HTTPError as e:
+            raise KeyError(f"no job id {key}" ) from e
+
+    def __len__(self):
+        return self.api.__len__()
+
+    def __iter__(self):
+        return self.api.__iter__()
+
+
+class _JobsIter(Iterator):
+
+    def __init__(self, session, limit=10, **kwargs):
+        self.session = session
+        self._jobs = deque()
+        self._qdict = {**kwargs, "limit":limit}
+        self._next  = True
+        return
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return self._jobs.popleft()
+        except IndexError:
+            # should we try to get more jobs from endpoint?
+            if self._next:
+                # get next jobs page
+                jj = self.session.get('jobs', params=self._qdict).json()
+                # get URL/query dict for next page
+                href_next = get_jspath_node(jj, '$.links[?rel=="next"].href')
+                if href_next:
+                    self._qdict = self.get_query_dict(href_next)
+                else:
+                    self._next = False
+                jlist = jj["jobs"]
+                if len(jj["jobs"])>0:
+                    self._jobs.extend(jj["jobs"])
+                    return self._jobs.popleft()
+            raise StopIteration
+
+    @staticmethod
+    def get_query_dict(url):
+        qstr = urlparse(url).query
+        return dict(parse_qsl(qstr)) if qstr else None
+
+class JobsApi(Mapping):
+
+    def __init__(self, session):
+        self.session = session
+        self.status  = EpDict(self, 'jobs/{key}')
+        self.results = EpDict(self, 'jobs/{key}/results')
+        self.receipt = EpDict(self, 'jobs/{key}/receipt')
+        return
+
+    def __len__(self):
+        jj = self.session.get('jobs', params={"limit":1}).json()
+        return get_jspath_node(jj, "$.metadata.totalCount", type=int)
+
+    def __getitem__(self, key):
+        return self.status[key]
+
+    def __delitem__(self, key):
+        return self.delete(key)
+
+    def __iter__(self):
+        return (j["jobID"] for j in  _JobsIter(self.session, limit=10))
+
+    def __call__(self, limit=10, **qparams):
+        return _JobsIter(self.session, limit=limit, **qparams)
+        
+    def submit(self, req):
+        '''
+        submit a data request job
+
+        Parameters
+        ----------
+        req : dict-like
+            the request in dictionary format
+
+        Returns
+        -------
+        response
+        '''
+        # get dataset
+        dataset = req["dataset"]
+        resp = self.session.post(
+            f"processes/{dataset}/execution",
+            json={
+                "inputs": req
+            }
+        )
+        return resp.json()
+
+    def delete(self, key):
+        '''
+        delete a data request job
+
+        Parameters
+        ----------
+        jid : int
+            the ID of the data request job
+
+        Returns
+        -------
+        response
+        '''
+        return self.session.delete(f'jobs/{key}').json()
 
 
 def download_url(self, url, ostream, *, http_resp=False, chunk_size=8192):
