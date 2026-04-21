@@ -26,14 +26,11 @@
 
 import glob
 import pathlib
-import versioneer
 
 from setuptools import setup
 
 setup(
     name         = 'trosat-base',
-    version      = versioneer.get_version(),
-    cmdclass     = versioneer.get_cmdclass(),
     author       = 'Hartwig Deneke', 
     author_email = 'deneke@tropos.de',
     scripts      = glob.glob('bin/*'),
