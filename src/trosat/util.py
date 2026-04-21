@@ -28,7 +28,7 @@
 
 import json
 from jsonpath_ng.ext import parse as _jp_parse_nocache
-from functools import lru_cache
+from functools import lru_cache, reduce
 from operator import attrgetter
 import hashlib
 
@@ -112,6 +112,21 @@ def md5sum(fn, chunk_size=8192):
             cks.update(chunk)
     return cks.hexdigest()
 
-
-
-
+def get_nested(d, keys, *, sep="."):
+    '''
+    get item from nested dictionary
+    
+    Parameters
+    ----------
+    keys : tuple of str or str
+       the sequence of keys to get
+    sep : str
+       split keys usi
+    
+    Returns
+    -------
+    retval : j
+        returns the value of the nested dict
+    '''
+    keys = keys.split(sep) if isinstance(keys, str) else keys
+    return reduce(lambda d,k: d.get(k, None) if d else None, keys, d)

@@ -28,53 +28,8 @@ import sys
 
 from collections.abc import Mapping, Sequence
 from requests.compat import urljoin
-from functools import reduce
 from toolz import dicttoolz
 from operator import itemgetter, getitem
-
-
-def get_nested(d, keys, *, sep="."):
-    '''
-    get item from nested dictionary
-    
-    Parameters
-    ----------
-    keys : tuple of str or str
-       the sequence of keys to get
-    sep : str
-       split keys usi
-    
-    Returns
-    -------
-    retval : j
-        returns the value of the nested dict
-    '''
-    keys = keys.split(sep) if isinstance(keys, str) else keys
-    return reduce(lambda d,k: d.get(k, None) if d else None, keys, d)
-
-
-def req2uuid(req):
-    '''
-    Generate a uuid from a request
-
-    Code based on:
-    https://gist.github.com/azylinski/b61116f74c609cf3b7a4b28d7da65c96
-    
-    Parameters
-    ----------
-    req : Mapping
-       the request
-    
-    Returns
-    -------
-    uuid : str
-       a string corresponding to a UUID for the object
-    '''
-    from uuid import NAMESPACE_DNS, uuid3
-    # convert req to JSON
-    jreq= json.dumps(req, sort_keys=True)
-    # return uuid3 string
-    return str(uuid3(NAMESPACE_DNS, jreq))
 
 
 def request_has_children(req):
