@@ -34,7 +34,5 @@ setup(
     author       = 'Hartwig Deneke', 
     author_email = 'deneke@tropos.de',
     scripts      = glob.glob('bin/*'),
-    packages     = [ 'trosat', 'trosat.base' ],
-    package_dir  = { '': 'src' },
     url          = 'https://github.com/hdeneke/trosat-base'
 )

@@ -1,0 +1,21 @@
+[build-system]
+requires = [
+    "setuptools>=80",
+    "setuptools-scm>=10",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trosat-base"
+dynamic = ["version"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+version_file = "src/trosat/base/_version.py"
+local_scheme = "dirty-tag"
